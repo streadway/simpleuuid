@@ -43,12 +43,14 @@ const (
 
 var (
 	parseErrorLength = errors.New("Could not parse UUID due to mistmatched length")
-	max13bit         = big.NewInt(1 << 13)
-	max16bit         = big.NewInt(1 << 16)
-	max32bit         = big.NewInt(1 << 32)
+	max13bit         = big.NewInt((1 << 13) - 1)
+	max16bit         = big.NewInt((1 << 16) - 1)
+	max32bit         = big.NewInt((1 << 32) - 1)
 )
 
 /*
+Byte encoded sequence in the following form:
+
    0                   1                   2                   3
     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -71,6 +73,8 @@ func Copy(uuid UUID) UUID {
 	return dup
 }
 
+// Allocate a UUID from a 16 byte sequence.  This can take any version,
+// although versions other than 1 will not have a meaningful time component.
 func NewBytes(bytes []byte) (UUID, error) {
 	if len(bytes) != size {
 		return nil, parseErrorLength
@@ -83,6 +87,8 @@ func NewBytes(bytes []byte) (UUID, error) {
 	return UUID(b), nil
 }
 
+// Allocate a new UUID from a time, encoding the timestamp from the UTC
+// timezone and using a random value for the clock and node.
 func NewTime(t time.Time) (UUID, error) {
 	bytes := make([]byte, size)
 	ts := fromUnixNano(t.UTC().UnixNano())
@@ -102,6 +108,10 @@ func NewTime(t time.Time) (UUID, error) {
 	return UUID(bytes), nil
 }
 
+// Parse and allocate from a string encoded UUID like:
+// "6ba7b811-9dad-11d1-80b4-00c04fd430c8".  Does not validate the time, node
+// or clock are reasonable values, though it is intended to round trip from a
+// string to a string for all versions of UUIDs.
 func NewString(s string) (UUID, error) {
 	normalized := strings.Replace(s, "-", "", -1)
 
@@ -118,12 +128,15 @@ func NewString(s string) (UUID, error) {
 	return UUID(bytes), nil
 }
 
-// Returns the time in UTC
+// The time section of the UUID in the UTC timezone
 func (me UUID) Time() time.Time {
 	nsec := me.Nanoseconds()
 	return time.Unix(nsec/1e9, nsec%1e9).UTC()
 }
 
+// Returns the time_low, time_mid and time_hi sections of the UUID in 100
+// nanosecond resolution since the unix Epoch.  Negative values indicate
+// time prior to the gregorian epoch (00:00:00.00, 15 October 1582).
 func (me UUID) Nanoseconds() int64 {
 	time_low := uuidTime(binary.BigEndian.Uint32(me[0:4]))
 	time_mid := uuidTime(binary.BigEndian.Uint16(me[4:6]))
@@ -132,14 +145,41 @@ func (me UUID) Nanoseconds() int64 {
 	return toUnixNano((time_low) + (time_mid << 32) + (time_hi << 48))
 }
 
+/*
+ The 4 bit version of the underlying UUID.
+
+   Version  Description
+      1     The time-based version specified in RFC4122.
+
+      2     DCE Security version, with embedded POSIX UIDs.
+
+      3     The name-based version specified in RFC4122
+            that uses MD5 hashing.
+
+      4     The randomly or pseudo- randomly generated version
+            specified in RFC4122.
+
+      5     The name-based version specified in RFC4122
+            that uses SHA-1 hashing.
+*/
 func (me UUID) Version() int8 {
 	return int8((binary.BigEndian.Uint16(me[6:8]) & 0xf000) >> 12)
 }
 
+/*
+The 3 bit variant of the underlying UUID.
+
+  Msb0  Msb1  Msb2  Description
+   0     x     x    Reserved, NCS backward compatibility.
+   1     0     x    The variant specified in RFC4122.
+   1     1     0    Reserved, Microsoft Corporation backward compatibility
+   1     1     1    Reserved for future definition.
+*/
 func (me UUID) Variant() int8 {
 	return int8((binary.BigEndian.Uint16(me[8:10]) & 0xe000) >> 13)
 }
 
+// The timestamp in hex encoded form.
 func (me UUID) String() string {
 	return hex.EncodeToString(me[0:4]) + "-" +
 		hex.EncodeToString(me[4:6]) + "-" +
@@ -148,6 +188,7 @@ func (me UUID) String() string {
 		hex.EncodeToString(me[10:16])
 }
 
+// Stable comparison, first of the times then of the node values.
 func (me UUID) Compare(other UUID) int {
 	nsMe := me.Nanoseconds()
 	nsOther := other.Nanoseconds()
@@ -159,7 +200,7 @@ func (me UUID) Compare(other UUID) int {
 	return bytes.Compare(me[8:], other[8:])
 }
 
-// Treat the slice returned as immutable
+// The underlying byte slice.  Treat the slice returned as immutable.
 func (me UUID) Bytes() []byte {
 	return me
 }

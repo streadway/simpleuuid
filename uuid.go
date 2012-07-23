@@ -20,6 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+
+/*
+Implements a variant of Format 1 from RFC 4122 that is intended for stable
+sorting and play nicely as Cassandra TimeUUID keys.
+
+The other formats described in RFC 4122 should be parsable either in text or
+byte form, though will not be sortable or likely have a meaningful time
+componenet.
+*/
 package simpleuuid
 
 import (

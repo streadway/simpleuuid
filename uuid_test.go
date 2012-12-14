@@ -24,6 +24,8 @@ package simpleuuid
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -169,6 +171,44 @@ func TestBytes(t *testing.T) {
 
 	if url1.String() != url2.String() {
 		t.Error("Bytes not equal", url1, url2)
+	}
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	b := fmt.Sprintf(`{"uuid":"%s"}`, urlString)
+	s := new(struct{ Uuid UUID })
+
+	if err := json.Unmarshal([]byte(b), s); err != nil {
+		t.Error(err)
+	}
+
+	got := s.Uuid.String()
+	want := urlString
+
+	if got != want {
+		t.Errorf("UUID Mismatch: %s, %s", got, want)
+	}
+}
+
+func TestMarshalJSON(t *testing.T) {
+	uuid, err := NewString(urlString)
+	if err != nil {
+		t.Error(err)
+	}
+
+	b, err := json.Marshal(struct {
+		Uuid UUID
+	}{uuid})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	got := string(b)
+	want := fmt.Sprintf(`{"Uuid":"%s"}`, urlString)
+
+	if got != want {
+		t.Errorf("Output mismatch: %s, %s", got, want)
 	}
 }
 

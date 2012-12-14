@@ -20,7 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
 /*
 Implements a variant of Format 1 from RFC 4122 that is intended for stable
 sorting and play nicely as Cassandra TimeUUID keys.
@@ -36,6 +35,7 @@ import (
 	urandom "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"math/big"
 	prandom "math/rand"
@@ -212,6 +212,28 @@ func (me UUID) Compare(other UUID) int {
 // The underlying byte slice.  Treat the slice returned as immutable.
 func (me UUID) Bytes() []byte {
 	return me
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (me *UUID) UnmarshalJSON(b []byte) error {
+	var field string
+	if err := json.Unmarshal(b, &field); err != nil {
+		return err
+	}
+
+	uuid, err := NewString(field)
+	if err != nil {
+		return err
+	}
+
+	*me = uuid
+
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (me UUID) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + me.String() + `"`), nil
 }
 
 // Utility functions

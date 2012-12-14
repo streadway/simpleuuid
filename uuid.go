@@ -221,7 +221,7 @@ func (me *UUID) UnmarshalJSON(b []byte) (err error) {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (me UUID) MarshalJSON() ([]byte, error) {
-	return []byte("\"" + me.String() + "\""), nil
+	return []byte(`"` + me.String() + `"`), nil
 }
 
 // Utility functions

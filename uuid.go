@@ -35,6 +35,7 @@ import (
 	urandom "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"math/big"
 	prandom "math/rand"
@@ -215,9 +216,19 @@ func (me UUID) Bytes() []byte {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (me *UUID) UnmarshalJSON(b []byte) error {
-	uuid, err := NewString(strings.Trim(string(b), `"`))
+	var field string
+	if err := json.Unmarshal(b, &field); err != nil {
+		return err
+	}
+
+	uuid, err := NewString(field)
+	if err != nil {
+		return err
+	}
+
 	*me = uuid
-	return err
+
+	return nil
 }
 
 // MarshalJSON implements the json.Marshaler interface.

@@ -214,9 +214,10 @@ func (me UUID) Bytes() []byte {
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
-func (me *UUID) UnmarshalJSON(b []byte) (err error) {
-	*me, err = NewString(string(b[1 : len(b)-1]))
-	return
+func (me *UUID) UnmarshalJSON(b []byte) error {
+  uuid, err := NewString(string(b[1 : len(b)-1]))
+  *me = uuid
+	return err
 }
 
 // MarshalJSON implements the json.Marshaler interface.

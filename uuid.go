@@ -215,7 +215,7 @@ func (me UUID) Bytes() []byte {
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (me *UUID) UnmarshalJSON(b []byte) error {
-  uuid, err := NewString(string(b[1 : len(b)-1]))
+  uuid, err := NewString(strings.Trim(string(b), `"`))
   *me = uuid
 	return err
 }

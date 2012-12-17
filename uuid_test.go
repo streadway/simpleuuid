@@ -54,8 +54,8 @@ func TestNewTimeRoundTrip(t *testing.T) {
 	}
 
 	then := uuid.Time()
-	if now.UTC() != then {
-		t.Error("UUID should parse and generate", now, then)
+	if now.UnixNano()/100 != then.UnixNano()/100 {
+		t.Errorf("UUID should parse and generate time based with 100ns precision. want %v, got %v", now.UTC(), then)
 	}
 }
 

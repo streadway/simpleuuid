@@ -32,11 +32,13 @@ package simpleuuid
 
 import (
 	"bytes"
+	"crypto/md5"
 	urandom "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"math/big"
 	prandom "math/rand"
 	"strings"
@@ -115,6 +117,50 @@ func NewTime(t time.Time) (UUID, error) {
 	binary.BigEndian.PutUint32(bytes[12:16], uint32(rand(max32bit)))
 
 	return UUID(bytes), nil
+}
+
+// NewTimeWithMD5Salt allocates a new UUID from a time, encoding the timestamp
+// from the UTC timezone and using the first 8 bytes of the computed MD5 hash
+// of the passed s function argument for the clock and node.
+// This implementation is not RFC4122 compliant
+func NewTimeWithMD5Salt(t time.Time, s string) (UUID, error) {
+	bs := make([]byte, size)
+	ts := fromUnixNano(t.UTC().UnixNano())
+	h := md5.New()
+
+	// time
+	binary.BigEndian.PutUint32(bs[0:4], uint32(ts&0xffffffff))
+	binary.BigEndian.PutUint16(bs[4:6], uint16((ts>>32)&0xffff))
+	binary.BigEndian.PutUint16(bs[6:8], uint16((ts>>48)&0x0fff)|version1)
+
+	// compute MD5 hash of salt
+	io.WriteString(h, s)
+	sh := bytes.NewBuffer(h.Sum(nil))
+
+	// clock
+	var cl uint16
+	err := binary.Read(sh, binary.BigEndian, &cl)
+	if err != nil {
+		return nil, err
+	}
+	binary.BigEndian.PutUint16(bs[8:10], cl|variant)
+
+	// node
+	var nd1 uint16
+	err = binary.Read(sh, binary.BigEndian, &nd1)
+	if err != nil {
+		return nil, err
+	}
+	binary.BigEndian.PutUint16(bs[10:12], nd1)
+
+	var nd2 uint32
+	err = binary.Read(sh, binary.BigEndian, &nd2)
+	if err != nil {
+		return nil, err
+	}
+	binary.BigEndian.PutUint32(bs[12:16], nd2)
+
+	return UUID(bs), nil
 }
 
 // Parse and allocate from a string encoded UUID like:

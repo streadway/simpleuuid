@@ -59,6 +59,35 @@ func TestNewTimeRoundTrip(t *testing.T) {
 	}
 }
 
+func TestNewTimeWithMD5Salt(t *testing.T) {
+	now := time.Now()
+	str := "this is a string"
+
+	uuid1, err := NewTimeWithMD5Salt(now, str)
+	if err != nil {
+		t.Error(err)
+	}
+
+	then := time.Now()
+	uuid2, err := NewTimeWithMD5Salt(then, str)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !uuid1.Time().Equal(now) || !uuid2.Time().Equal(then) {
+		t.Errorf("UUID timestamp encoding error")
+	}
+
+	// Compare MD5 part. clock and node
+	if bytes.Compare(uuid1.Bytes()[8:], uuid2.Bytes()[8:]) != 0 {
+		t.Errorf("UUID clock and node encoding error")
+	}
+
+	if uuid1.Compare(uuid2) != -1 {
+		t.Errorf("UUID 2 should be greater than UUID 1")
+	}
+}
+
 func TestNewString(t *testing.T) {
 	uuid1, err := NewString(urlString)
 	if err != nil {

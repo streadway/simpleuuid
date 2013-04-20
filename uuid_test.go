@@ -301,3 +301,26 @@ func TestOrdering(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// Version 1:
+// xxxxxxxx-xxxx-1xxx-yxxx-xxxxxxxxxxxx y::{8 9 a b}
+// 012345678901234567890123456789012345
+func hasVersionAndVariantDigitsInString(u UUID) bool {
+	s := u.String()
+	return s[14] == '1' &&
+		(s[19] == '8' ||
+			s[19] == '9' ||
+			s[19] == 'a' ||
+			s[19] == 'b')
+}
+
+func TestStringVersionAndVariantForNewTime(t *testing.T) {
+	f := func(sec, nsec uint32) bool {
+		u, _ := NewTime(time.Unix(int64(sec), int64(nsec)))
+		return hasVersionAndVariantDigitsInString(u)
+	}
+
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}

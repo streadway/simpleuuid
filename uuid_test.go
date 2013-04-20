@@ -59,6 +59,33 @@ func TestNewTimeRoundTrip(t *testing.T) {
 	}
 }
 
+func TestNewTimeSalt(t *testing.T) {
+	t1 := time.Date(2013, time.April, 20, 11, 40, 0, 0, time.UTC)
+	t2 := time.Date(2013, time.April, 20, 11, 40, 0, 100, time.UTC)
+	salt := []byte("AAAAAAAB")
+	uuid1, _ := NewTimeSalt(t1, salt)
+	uuid2, _ := NewTimeSalt(t2, salt)
+
+	if !uuid1.Time().Equal(t1) || !uuid2.Time().Equal(t2) {
+		t.Errorf("UUID timestamp encoding error")
+	}
+
+	if bytes.Compare(uuid1.Bytes()[8:], uuid2.Bytes()[8:]) != 0 {
+		t.Errorf("UUID clock and node encoding error")
+	}
+
+	if uuid1.Compare(uuid2) != -1 {
+		t.Errorf("UUID 2 should be greater than UUID 1")
+	}
+}
+
+func TestBadNewTimeSalt(t *testing.T) {
+	_, err := NewTimeSalt(time.Now(), []byte("AAAB"))
+	if err != saltErrorLength {
+		t.Errorf("Salt length must be enforced to be 8 bytes")
+	}
+}
+
 func TestNewString(t *testing.T) {
 	uuid1, err := NewString(urlString)
 	if err != nil {

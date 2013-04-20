@@ -51,7 +51,8 @@ const (
 )
 
 var (
-	parseErrorLength = errors.New("Could not parse UUID due to mistmatched length")
+	parseErrorLength = errors.New("Could not parse UUID due to mismatched length")
+	saltErrorLength  = errors.New("Could not parse salt due to mismatched length")
 	max13bit         = big.NewInt((1 << 13) - 1)
 	max16bit         = big.NewInt((1 << 16) - 1)
 	max32bit         = big.NewInt((1 << 32) - 1)
@@ -115,6 +116,31 @@ func NewTime(t time.Time) (UUID, error) {
 	binary.BigEndian.PutUint32(bytes[12:16], uint32(rand(max32bit)))
 
 	return UUID(bytes), nil
+}
+
+// Allocate a new UUID from a time, encoding the timestamp from the UTC
+// timezone and using a passed salt as the clock and node fields.
+func NewTimeSalt(t time.Time, s []byte) (UUID, error) {
+	bs := make([]byte, size)
+	ts := fromUnixNano(t.UTC().UnixNano())
+
+	// time
+	binary.BigEndian.PutUint32(bs[0:4], uint32(ts&0xffffffff))
+	binary.BigEndian.PutUint16(bs[4:6], uint16((ts>>32)&0xffff))
+	binary.BigEndian.PutUint16(bs[6:8], uint16((ts>>48)&0x0fff)|version1)
+
+	if len(s) != 8 {
+		return UUID(bs), saltErrorLength
+	}
+
+	// clock
+	binary.BigEndian.PutUint16(bs[8:10], binary.BigEndian.Uint16(s[0:2])|variant)
+
+	// node
+	binary.BigEndian.PutUint16(bs[10:12], binary.BigEndian.Uint16(s[2:4]))
+	binary.BigEndian.PutUint32(bs[12:16], binary.BigEndian.Uint32(s[4:8]))
+
+	return UUID(bs), nil
 }
 
 // Parse and allocate from a string encoded UUID like:

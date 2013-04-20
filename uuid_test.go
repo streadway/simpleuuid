@@ -196,10 +196,7 @@ func TestMarshalJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	b, err := json.Marshal(struct {
-		Uuid UUID
-	}{uuid})
-
+	b, err := json.Marshal(struct{ Uuid UUID }{uuid})
 	if err != nil {
 		t.Error(err)
 	}
@@ -256,13 +253,77 @@ func TestUnixTimeAt100NanoResolution(t *testing.T) {
 	}
 }
 
-func TestInequalityForTime(t *testing.T) {
+func TestInequalityForTimeWithRandom(t *testing.T) {
 	f := func(sec, nsec uint32) bool {
 		time := time.Unix(int64(sec), int64(nsec))
 		u1, _ := NewTime(time)
 		u2, _ := NewTime(time)
 
 		return u1.Compare(u2) != 0
+	}
+
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestEqualityForTimeWithBytes(t *testing.T) {
+	f := func(sec, nsec uint32, b byte) bool {
+		time := time.Unix(int64(sec), int64(nsec))
+		u1, _ := NewTimeBytes(time, []byte{b, b, b, b, b, b, b, b})
+		u2, _ := NewTimeBytes(time, []byte{b, b, b, b, b, b, b, b})
+
+		return u1.Compare(u2) == 0
+	}
+
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestRoundTripOfTimeBytes(t *testing.T) {
+	f := func(sec, nsec uint32, b byte) bool {
+		time := time.Unix(int64(sec), int64(nsec))
+		bs := []byte{b, b, b, b, b, b, b, b}
+
+		ut, _ := NewTimeBytes(time, bs)
+		ub, _ := NewBytes([]byte(ut))
+
+		return bytes.Compare(ut[8:], ub[8:]) == 0
+	}
+
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestZeroPaddedRightAlignmentOfTimeBytes(t *testing.T) {
+	f := func(b byte, l uint) bool {
+		bs := make([]byte, (l%8)+1)
+		for i, _ := range bs {
+			bs[i] = b
+		}
+
+		u, err := NewTimeBytes(time.Now(), bs)
+		if err != nil {
+			return false
+		}
+
+		// check masked bytes right to left
+		for i, j := 15, len(bs)-1; i >= 8; i, j = i-1, j-1 {
+			if j >= 0 {
+				if bs[j]&0x0f != u[i]&0x0f {
+					t.Log("expected right aligned %d to equal %d", j, i)
+					return false
+				}
+			} else {
+				if u[i]&0x0f != 0 {
+					t.Log("expected right %d be zero", i)
+					return false
+				}
+			}
+		}
+		return true
 	}
 
 	if err := quick.Check(f, nil); err != nil {
@@ -302,7 +363,7 @@ func TestOrdering(t *testing.T) {
 	}
 }
 
-// Version 1:
+// Version 1 + Variant 8
 // xxxxxxxx-xxxx-1xxx-yxxx-xxxxxxxxxxxx y::{8 9 a b}
 // 012345678901234567890123456789012345
 func hasVersionAndVariantDigitsInString(u UUID) bool {
@@ -317,6 +378,17 @@ func hasVersionAndVariantDigitsInString(u UUID) bool {
 func TestStringVersionAndVariantForNewTime(t *testing.T) {
 	f := func(sec, nsec uint32) bool {
 		u, _ := NewTime(time.Unix(int64(sec), int64(nsec)))
+		return hasVersionAndVariantDigitsInString(u)
+	}
+
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestStringVersionAndVariantForNewTimeBytes(t *testing.T) {
+	f := func(sec, nsec uint32, b byte) bool {
+		u, _ := NewTimeBytes(time.Unix(int64(sec), int64(nsec)), []byte{b, b, b, b, b, b, b, b})
 		return hasVersionAndVariantDigitsInString(u)
 	}
 

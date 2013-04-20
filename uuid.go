@@ -32,13 +32,12 @@ package simpleuuid
 
 import (
 	"bytes"
-	urandom "crypto/rand"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"math/big"
-	prandom "math/rand"
+	"io"
 	"strings"
 	"time"
 )
@@ -46,15 +45,12 @@ import (
 const (
 	gregorianEpoch = 0x01B21DD213814000
 	size           = 16
-	variant        = 0x8000 // sec. 4.1.1
-	version1       = 0x1000 // sec. 4.1.3
+	variant8       = 8 // sec. 4.1.1
+	version1       = 1 // sec. 4.1.3
 )
 
 var (
-	parseErrorLength = errors.New("Could not parse UUID due to mistmatched length")
-	max13bit         = big.NewInt((1 << 13) - 1)
-	max16bit         = big.NewInt((1 << 16) - 1)
-	max32bit         = big.NewInt((1 << 32) - 1)
+	errLength = errors.New("mismatched UUID length")
 )
 
 /*
@@ -82,11 +78,38 @@ func Copy(uuid UUID) UUID {
 	return dup
 }
 
+// Allocates a new UUID from the given time, up to 8 bytes clock sequence and
+// node data supplied by the caller.  The high 4 bits of the first byte will be
+// masked with the UUID variant.
+//
+// Byte slices shorter than 8 will be right aligned to the clock, and node
+// fields.  For example, if you provide 4 byte slice of 0x0a0b0c0d", the last 8
+// bytes of the new UUID will be 0x08000000a0b0c0d.
+func NewTimeBytes(t time.Time, bytes []byte) (UUID, error) {
+	if len(bytes) > size {
+		return nil, errLength
+	}
+
+	me := make([]byte, size)
+	ts := fromUnixNano(t.UTC().UnixNano())
+
+	// time masked with version
+	binary.BigEndian.PutUint32(me[0:4], uint32(ts&0xffffffff))
+	binary.BigEndian.PutUint16(me[4:6], uint16((ts>>32)&0xffff))
+	binary.BigEndian.PutUint16(me[6:8], uint16((ts>>48)&0x0fff)|version1<<12)
+
+	// right aligned remaining 8 bytes masked with variant
+	copy(me[8+8-len(bytes):size], bytes[:len(bytes)])
+	me[8] = me[8]&0x0f | variant8<<4
+
+	return UUID(me), nil
+}
+
 // Allocate a UUID from a 16 byte sequence.  This can take any version,
 // although versions other than 1 will not have a meaningful time component.
 func NewBytes(bytes []byte) (UUID, error) {
 	if len(bytes) != size {
-		return nil, parseErrorLength
+		return nil, errLength
 	}
 
 	// Copy out this slice so not to hold a reference to the container
@@ -99,22 +122,15 @@ func NewBytes(bytes []byte) (UUID, error) {
 // Allocate a new UUID from a time, encoding the timestamp from the UTC
 // timezone and using a random value for the clock and node.
 func NewTime(t time.Time) (UUID, error) {
-	bytes := make([]byte, size)
-	ts := fromUnixNano(t.UTC().UnixNano())
-
-	// time
-	binary.BigEndian.PutUint32(bytes[0:4], uint32(ts&0xffffffff))
-	binary.BigEndian.PutUint16(bytes[4:6], uint16((ts>>32)&0xffff))
-	binary.BigEndian.PutUint16(bytes[6:8], uint16((ts>>48)&0x0fff)|version1)
-
-	// clock (random)
-	binary.BigEndian.PutUint16(bytes[8:10], uint16(rand(max13bit)|variant))
-
-	// node (random)
-	binary.BigEndian.PutUint16(bytes[10:12], uint16(rand(max16bit)))
-	binary.BigEndian.PutUint32(bytes[12:16], uint32(rand(max32bit)))
-
-	return UUID(bytes), nil
+	rnd := make([]byte, 8)
+	n, err := io.ReadFull(rand.Reader, rnd)
+	if n != len(rnd) {
+		return nil, errLength
+	}
+	if err != nil {
+		return nil, err
+	}
+	return NewTimeBytes(t, rnd)
 }
 
 // Parse and allocate from a string encoded UUID like:
@@ -125,7 +141,7 @@ func NewString(s string) (UUID, error) {
 	normalized := strings.Replace(s, "-", "", -1)
 
 	if hex.DecodedLen(len(normalized)) != size {
-		return nil, parseErrorLength
+		return nil, errLength
 	}
 
 	bytes, err := hex.DecodeString(normalized)
@@ -237,14 +253,6 @@ func (me UUID) MarshalJSON() ([]byte, error) {
 }
 
 // Utility functions
-
-func rand(max *big.Int) int64 {
-	i, err := urandom.Int(urandom.Reader, max)
-	if err != nil {
-		return prandom.Int63n(max.Int64())
-	}
-	return i.Int64()
-}
 
 func fromUnixNano(ns int64) uuidTime {
 	return uuidTime((ns / 100) + gregorianEpoch)

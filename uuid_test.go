@@ -79,6 +79,21 @@ func TestNewString(t *testing.T) {
 	}
 }
 
+func TestOrderedString(t *testing.T) {
+	uuid1, err := NewTime(time.Now())
+	if err != nil {
+		t.Error(err)
+	}
+	uuid2, err := NewTime(time.Now())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if uuid1.OrderedString() >= uuid2.OrderedString() {
+		t.Error("ordered uuid1 is not less than ordered uuid2", uuid1.OrderedString(), uuid2.OrderedString())
+	}
+}
+
 func TestBadNewString(t *testing.T) {
 	_, err := NewString("0000")
 	if err == nil {

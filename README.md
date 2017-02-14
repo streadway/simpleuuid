@@ -1,9 +1,7 @@
 # Simple UUIDs
 
-[![Build Status][1]][2]
+[![CircleCI](https://circleci.com/gh/rewardStyle/simpleuuid.svg?style=svg)](https://circleci.com/gh/rewardStyle/simpleuuid)
 
-[1]: https://secure.travis-ci.org/streadway/simpleuuid.png
-[2]: http://www.travis-ci.org/streadway/simpleuuid
 
 This implements a variant of Format 1 from [RFC 4122][rfc4122] that is intended
 to be roughly sortable and play nicely as Cassandra TimeUUID keys.  Much of the

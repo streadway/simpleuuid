@@ -57,7 +57,7 @@ var (
 Byte encoded sequence in the following form:
 
    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+	0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                          time_low                             |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -174,18 +174,18 @@ func (me UUID) Nanoseconds() int64 {
  The 4 bit version of the underlying UUID.
 
    Version  Description
-      1     The time-based version specified in RFC4122.
+	  1     The time-based version specified in RFC4122.
 
-      2     DCE Security version, with embedded POSIX UIDs.
+	  2     DCE Security version, with embedded POSIX UIDs.
 
-      3     The name-based version specified in RFC4122
-            that uses MD5 hashing.
+	  3     The name-based version specified in RFC4122
+			that uses MD5 hashing.
 
-      4     The randomly or pseudo- randomly generated version
-            specified in RFC4122.
+	  4     The randomly or pseudo- randomly generated version
+			specified in RFC4122.
 
-      5     The name-based version specified in RFC4122
-            that uses SHA-1 hashing.
+	  5     The name-based version specified in RFC4122
+			that uses SHA-1 hashing.
 */
 func (me UUID) Version() int8 {
 	return int8((binary.BigEndian.Uint16(me[6:8]) & 0xf000) >> 12)
@@ -213,6 +213,15 @@ func (me UUID) String() string {
 		hex.EncodeToString(me[10:16])
 }
 
+// The timestamp in hex ordered to optimize sorting
+func (me UUID) OrderedString() string {
+	return hex.EncodeToString(me[6:8]) + "-" +
+		hex.EncodeToString(me[4:6]) + "-" +
+		hex.EncodeToString(me[0:4]) + "-" +
+		hex.EncodeToString(me[8:10]) + "-" +
+		hex.EncodeToString(me[10:16])
+}
+
 // Stable comparison, first of the times then of the node values.
 func (me UUID) Compare(other UUID) int {
 	nsMe := me.Nanoseconds()
@@ -228,6 +237,11 @@ func (me UUID) Compare(other UUID) int {
 // The underlying byte slice.  Treat the slice returned as immutable.
 func (me UUID) Bytes() []byte {
 	return me
+}
+
+// The underlying byte slice ordered to optimize sorting
+func (me UUID) OrderedBytes() []byte {
+	return append(append(append(append([]byte{}, me[6:8]...), me[4:6]...), me[0:4]...), me[8:16]...)
 }
 
 // UnmarshalJSON implements the json.Unmarshaler interface.

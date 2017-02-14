@@ -239,6 +239,11 @@ func (me UUID) Bytes() []byte {
 	return me
 }
 
+// The underlying byte slice ordered to optimize sorting
+func (me UUID) OrderedBytes() []byte {
+	return append(append(append(append([]byte{}, me[6:8]...), me[4:6]...), me[0:4]...), me[8:16]...)
+}
+
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (me *UUID) UnmarshalJSON(b []byte) error {
 	var field string

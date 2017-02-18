@@ -213,6 +213,14 @@ func (me UUID) String() string {
 		hex.EncodeToString(me[10:16])
 }
 
+func (me UUID) AlreadyOrderedString() string {
+	return hex.EncodeToString(me[0:2]) + "-" +
+		hex.EncodeToString(me[2:4]) + "-" +
+		hex.EncodeToString(me[4:8]) + "-" +
+		hex.EncodeToString(me[8:10]) + "-" +
+		hex.EncodeToString(me[10:16])
+}
+
 // The timestamp in hex ordered to optimize sorting
 func (me UUID) OrderedString() string {
 	return hex.EncodeToString(me[6:8]) + "-" +

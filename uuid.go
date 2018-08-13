@@ -230,6 +230,16 @@ func (me UUID) OrderedString() string {
 		hex.EncodeToString(me[10:16])
 }
 
+// Handles re-ordering UUIDs stored in LTK python microservices
+func FromPythonOrdered(byteId []byte) string {
+	hex := hex.EncodeToString(byteId)
+	return hex[8:16] + "-" +
+			hex[4:8] + "-" +
+			hex[:4] + "-" +
+			hex[16:20] + "-" +
+			hex[20:]
+}
+
 // Stable comparison, first of the times then of the node values.
 func (me UUID) Compare(other UUID) int {
 	nsMe := me.Nanoseconds()

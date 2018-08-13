@@ -79,6 +79,33 @@ func TestNewString(t *testing.T) {
 	}
 }
 
+func TestOrderedString(t *testing.T) {
+	uuid1, err := NewTime(time.Now())
+	if err != nil {
+		t.Error(err)
+	}
+	uuid2, err := NewTime(time.Now())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if uuid1.OrderedString() >= uuid2.OrderedString() {
+		t.Error("Ordered uuid1 is not less than ordered uuid2", uuid1.OrderedString(), uuid2.OrderedString())
+	}
+}
+
+func TestPythonOrdered(t *testing.T) {
+	uuidBytes := []byte{17, 229, 255, 48, 76, 75, 153, 61, 150, 239, 34, 0, 11, 15, 143, 58}
+
+	expectedUUIDStr := "4c4b993d-ff30-11e5-96ef-22000b0f8f3a"
+
+	returnedStr := FromPythonOrdered(uuidBytes)
+
+	if expectedUUIDStr != returnedStr {
+		t.Error("Ordered uuid strings do not match: ", expectedUUIDStr, returnedStr)
+	}
+}
+
 func TestBadNewString(t *testing.T) {
 	_, err := NewString("0000")
 	if err == nil {
@@ -170,6 +197,35 @@ func TestBytes(t *testing.T) {
 	}
 
 	if url1.String() != url2.String() {
+		t.Error("Bytes not equal", url1, url2)
+	}
+}
+
+func TestOrderedBytes(t *testing.T) {
+	uuid1, err := NewTime(time.Now())
+	if err != nil {
+		t.Error(err)
+	}
+	uuid2, err := NewTime(time.Now())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if bytes.Compare(uuid1.OrderedBytes(), uuid2.OrderedBytes()) != -1 {
+		t.Error("Ordered bytes of uuid1 is not less than ordered bytes uuid2", uuid1.OrderedString(), uuid2.OrderedString())
+	}
+
+	url1, err := NewBytes(url)
+	if err != nil {
+		t.Error(err)
+	}
+
+	url2, err := NewBytes(url1.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+
+	if bytes.Compare(url1.OrderedBytes(), url2.OrderedBytes()) != 0 {
 		t.Error("Bytes not equal", url1, url2)
 	}
 }

@@ -94,6 +94,18 @@ func TestOrderedString(t *testing.T) {
 	}
 }
 
+func TestPythonOrdered(t *testing.T) {
+	uuidBytes := []byte{17, 229, 255, 48, 76, 75, 153, 61, 150, 239, 34, 0, 11, 15, 143, 58}
+
+	expectedUUIDStr := "4c4b993d-ff30-11e5-96ef-22000b0f8f3a"
+
+	returnedStr := FromPythonOrdered(uuidBytes)
+
+	if expectedUUIDStr != returnedStr {
+		t.Error("Ordered uuid strings do not match: ", expectedUUIDStr, returnedStr)
+	}
+}
+
 func TestBadNewString(t *testing.T) {
 	_, err := NewString("0000")
 	if err == nil {
